@@ -2,23 +2,17 @@ import streamlit as st
 import pandas as pd
 
 # Load data files
-print("Loading data files...")
 artists_df = pd.read_csv('artists_gp3.dat', sep='\t', header=None, names=['artist_id', 'artist_name'])
 user_artists_df = pd.read_csv('user_artists_gp3.dat', sep='\t', header=None, names=['user_id', 'artist_id', 'weight'])
 
-print("Artists DataFrame:")
-print(artists_df.head())
-print("\nUser Artists DataFrame:")
-print(user_artists_df.head())
-
 # Function to get top 5 artists for a given user ID
 def get_top_artists(user_id):
-    user_data = user_artists_df[user_artists_df['user_id'] == user_id]
+    user_data = user_artists_df[user_artists_df['userID'] == user_id]
     if user_data.empty:
         return None
-    user_top_artists = user_data.groupby('artist_id')['weight'].sum().nlargest(5).reset_index()
+    user_top_artists = user_data.groupby('artistID')['weight'].sum().nlargest(5).reset_index()
     user_top_artists = user_top_artists.merge(artists_df, on='artist_id')
-    return user_top_artists[['artist_name', 'weight']]
+    return user_top_artists[['name', 'weight']]
 
 # Streamlit app
 def main():
@@ -26,14 +20,21 @@ def main():
     st.write('Enter your User ID to see your top 5 artists.')
 
     # User input
-    user_id = st.number_input('User ID:', step=1)
+    user_id = st.text_input('User ID:')
+    st.write("User ID:", user_id)
     if user_id == '':
         st.warning('Please enter a User ID.')
         return
 
-    user_id = int(user_id)  # Convert to integer
+    try:
+        user_id = int(user_id)
+        st.write("User ID as int:", user_id)
+    except ValueError:
+        st.warning('Invalid User ID. Please enter a valid User ID.')
+        return
 
     if user_id not in user_artists_df['user_id'].unique():
+        st.write("Unique User IDs:", user_artists_df['user_id'].unique())
         st.warning('User ID not found in the dataset. Please enter a valid User ID.')
         return
 
