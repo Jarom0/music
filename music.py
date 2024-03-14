@@ -2,8 +2,14 @@ import streamlit as st
 import pandas as pd
 
 # Load data files
+print("Loading data files...")
 artists_df = pd.read_csv('artists_gp3.dat', sep='\t', header=None, names=['artist_id', 'artist_name'])
 user_artists_df = pd.read_csv('user_artists_gp3.dat', sep='\t', header=None, names=['user_id', 'artist_id', 'weight'])
+
+print("Artists DataFrame:")
+print(artists_df.head())
+print("\nUser Artists DataFrame:")
+print(user_artists_df.head())
 
 # Function to get top 5 artists for a given user ID
 def get_top_artists(user_id):
@@ -20,16 +26,12 @@ def main():
     st.write('Enter your User ID to see your top 5 artists.')
 
     # User input
-    user_id = st.text_input('User ID:')
-    if user_id.strip() == '':
+    user_id = st.number_input('User ID:', step=1)
+    if user_id == '':
         st.warning('Please enter a User ID.')
         return
 
-    try:
-        user_id = int(user_id)
-    except ValueError:
-        st.warning('Invalid User ID. Please enter a valid User ID.')
-        return
+    user_id = int(user_id)  # Convert to integer
 
     if user_id not in user_artists_df['user_id'].unique():
         st.warning('User ID not found in the dataset. Please enter a valid User ID.')
