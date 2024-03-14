@@ -1,50 +1,58 @@
 import streamlit as st
 import pandas as pd
 
-# Load data files
-artists_df = pd.read_csv('artists_gp3.dat', sep='\t', header=None, names=['artist_id', 'artist_name'])
-user_artists_df = pd.read_csv('user_artists_gp3.dat', sep='\t', header=None, names=['user_id', 'artist_id', 'weight'])
+# Load data
+artists = pd.read_csv('artists_gp3.dat', delimiter='\t', names=['id', 'name', 'url', 'pictureURL'])
+user_artists = pd.read_csv('user_artists_gp3.dat', delimiter='\t', names=['userID', 'artistID', 'weight'])
 
-# Function to get top 5 artists for a given user ID
+import streamlit as st
+import pandas as pd
+
+# Load data
+artists_df = pd.read_csv('artists_gp3.dat', delimiter='\t', names=['id', 'name', 'url', 'pictureURL'])
+user_artists_df = pd.read_csv('user_artists_gp3.dat', delimiter='\t', names=['userID', 'artistID', 'weight'])
+
+# Function to get top artists
 def get_top_artists(user_id):
-    user_data = user_artists_df[user_artists_df['userID'] == user_id]
-    if user_data.empty:
+    try:
+        # Filter user data for the given user ID
+        user_data = user_artists_df[user_artists_df['userID'] == user_id]
+        
+        # Aggregate artist interactions by summing the weights
+        artist_interactions = user_data.groupby('artistID')['weight'].sum()
+        
+        # Sort artist interactions by total weight in descending order
+        artist_interactions_sorted = artist_interactions.sort_values(ascending=False)
+        
+        # Get top artist IDs
+        top_artist_ids = artist_interactions_sorted.head(5).index.tolist()
+        
+        # Get top artist names
+        top_artists = artists_df[artists_df['id'].isin(top_artist_ids)]['name'].tolist()
+        
+        return top_artists
+    except Exception as e:
+        print("Error:", e)
         return None
-    user_top_artists = user_data.groupby('artistID')['weight'].sum().nlargest(5).reset_index()
-    user_top_artists = user_top_artists.merge(artists_df, on='artist_id')
-    return user_top_artists[['name', 'weight']]
 
 # Streamlit app
 def main():
     st.title('Top Artists for User')
-    st.write('Enter your User ID to see your top 5 artists.')
-
-    # User input
-    user_id = st.text_input('User ID:')
-    st.write("User ID:", user_id)
-    if user_id == '':
-        st.warning('Please enter a User ID.')
-        return
-
-    try:
-        user_id = int(user_id)
-        st.write("User ID as int:", user_id)
-    except ValueError:
-        st.warning('Invalid User ID. Please enter a valid User ID.')
-        return
-
-    if user_id not in user_artists_df['user_id'].unique():
-        st.write("Unique User IDs:", user_artists_df['user_id'].unique())
-        st.warning('User ID not found in the dataset. Please enter a valid User ID.')
-        return
-
-    # Get top artists
-    top_artists = get_top_artists(user_id)
-    if top_artists is None:
-        st.warning('No interaction data found for this User ID.')
-    else:
-        st.subheader('Top 5 Artists:')
-        st.dataframe(top_artists)
+    user_id = st.text_input('Enter User ID:')
+    
+    if st.button('Submit'):
+        try:
+            user_id = int(user_id)
+            top_artists = get_top_artists(user_id)
+            if top_artists:
+                st.write(f"Top artists for User ID {user_id}:")
+                for i, artist_name in enumerate(top_artists, start=0):
+                    st.write(f"{i}. {artist_name}")
+            else:
+                st.write("Invalid User ID or User not found.")
+        except ValueError:
+            st.write("Error: Please enter a valid User ID (integer).")
 
 if __name__ == "__main__":
     main()
+
