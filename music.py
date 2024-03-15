@@ -41,14 +41,14 @@ def main():
                 st.write(f"{i}. {artist_name}")
                 # Get the picture URL for the current artist
                 artist_row = artists_df.loc[artists_df['name'] == artist_name]
-  #              picture_url = artist_row['pictureURL'].iloc[0] if not artist_row.empty else None
-   #             if picture_url:
-    #                try:
-    #                    st.image(picture_url, caption=artist_name, use_column_width=True)
-    #                except Exception as e:
-    #                    st.write(f"Error displaying image for {artist_name}: {e}")
-    #            else:
-    #                st.write(f"No picture available for {artist_name}")
+                picture_url = artist_row['pictureURL'].iloc[0] if not artist_row.empty else None
+                if picture_url:
+                    try:
+                        st.image(picture_url, caption=artist_name, use_column_width=True)
+                    except Exception as e:
+                        st.write(f"Error displaying image for {artist_name}: {e}")
+                else:
+                    st.write(f"No picture available for {artist_name}")
                 
                 # Create a hyperlink to the artist's page
                 artist_url = artist_row['url'].iloc[0] if not artist_row.empty else None
@@ -62,4 +62,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
