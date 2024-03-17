@@ -5,6 +5,10 @@ import pandas as pd
 artists_df = pd.read_csv('artists_gp3.dat', delimiter='\t', names=['id', 'name', 'url', 'pictureURL'])
 user_artists_df = pd.read_csv('user_artists_gp3.dat', delimiter='\t', names=['userID', 'artistID', 'weight'])
 
+# Read the CSV file and split the single column into multiple columns
+scraped_data_df = pd.read_excel('scraped_data_df.xlsx', header=None, names=['Artist Name', 'Top Track', 'Track Picture URL', 'Track Link', 'Artist Picture URL'])
+
+
 # Function to get top artists
 def get_top_artists(user_id):
     try:
@@ -39,19 +43,24 @@ def main():
             st.write(f"Top artists for User ID {user_id}:")
             for i, artist_name in enumerate(top_artists, start=1):
                 st.write(f"{i}. {artist_name}")
-                # Get the picture URL for the current artist
-                artist_row = artists_df.loc[artists_df['name'] == artist_name]
-                picture_url = artist_row['pictureURL'].iloc[0] if not artist_row.empty else None
-                if picture_url:
-                    try:
-                        st.image(picture_url, caption=artist_name, use_column_width=True)
-                    except Exception as e:
-                        st.write(f"Error displaying image for {artist_name}: {e}")
-                else:
-                    st.write(f"No picture available for {artist_name}")
                 
+                # Get the picture URL for the current artist
+                artist_row=scraped_data_df.loc[scraped_data_df['Artist Name']==artist_name]
+                if not artist_row.empty :
+                   picture_url=artist_row['Artist Picture URL'].iloc[0]
+                   if picture_url:
+                         try:
+                            st.image(picture_url, caption=artist_name, use_column_width=True)
+                         except Exception as e:
+                            st.write(f"Error displaying image for {artist_name}: {e}")
+                         else:
+                            st.write(f"No picture available for {artist_name}")
+                else:
+                    st.write(f"No data available for {artist_name} in scraped data.")
+
                 # Create a hyperlink to the artist's page
-                artist_url = artist_row['url'].iloc[0] if not artist_row.empty else None
+                artist_info = artists_df.loc[artists_df['name'] == artist_name]
+                artist_url = artist_info['url'].iloc[0] if not artist_row.empty else None
                 if artist_url:
                     st.markdown(f"[Click here to see the artist]({artist_url})")
                 else:
