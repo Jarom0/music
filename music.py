@@ -1,14 +1,12 @@
 import streamlit as st
 import pandas as pd
-import openpyxl
 
 # Load data
 artists_df = pd.read_csv('artists_gp3.dat', delimiter='\t', names=['id', 'name', 'url', 'pictureURL'])
 user_artists_df = pd.read_csv('user_artists_gp3.dat', delimiter='\t', names=['userID', 'artistID', 'weight'])
 
 # Read the CSV file and split the single column into multiple columns
-scraped_data_df = pd.read_excel('scraped_data_df.xlsx', header=None, names=['Artist Name', 'Top Track', 'Track Picture URL', 'Track Link', 'Artist Picture URL'])
-
+scraped_data_df = pd.read_csv('scraped_data_df.csv', header=None,delimiter=';', names=['Artist Name', 'Top Track', 'Track Picture URL', 'Track Link', 'Artist Picture URL'])
 
 # Function to get top artists
 def get_top_artists(user_id):
