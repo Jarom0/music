@@ -33,7 +33,7 @@ def get_top_artists(user_id):
 
 # Streamlit app
 def main():
-    st.title('Top Artists for User')
+    st.title('Top Artists and Tracks for User')
     user_id = st.text_input('Enter User ID:')
     
     if st.button('Submit'):
@@ -43,27 +43,28 @@ def main():
             for i, artist_name in enumerate(top_artists, start=1):
                 st.write(f"{i}. {artist_name}")
                 
-                # Get the picture URL for the current artist
-                artist_row=scraped_data_df.loc[scraped_data_df['Artist Name']==artist_name]
-                if not artist_row.empty :
-                   picture_url=artist_row['Artist Picture URL'].iloc[0]
-                   if picture_url:
-                         try:
-                            st.image(picture_url, caption=artist_name, use_column_width=True)
-                         except Exception as e:
-                            st.write(f"Error displaying image for {artist_name}: {e}")
-                         else:
-                            st.write(f"No picture available for {artist_name}")
-                else:
-                    st.write(f"No data available for {artist_name} in scraped data.")
 
+                # Display track pictures
+                top_tracks = scraped_data_df[scraped_data_df['Artist Name'] == artist_name]['Top Track'].tolist()
+                for track_name in top_tracks:
+                    track_picture_url = scraped_data_df[(scraped_data_df['Artist Name'] == artist_name) & (scraped_data_df['Top Track'] == track_name)]['Track Picture URL'].iloc[0]
+                    if track_picture_url:
+                        try:
+                            st.image(track_picture_url, caption=track_name, width=150)
+                            st.markdown(f'<style>div.stImage > img {{ float: right; }}</style>', unsafe_allow_html=True)
+                        except Exception as e:
+                            st.write(f"Error displaying image for {track_name}: {e}")
+                    else:
+                        st.write(f"No picture available for {track_name}")
+                
                 # Create a hyperlink to the artist's page
                 artist_info = artists_df.loc[artists_df['name'] == artist_name]
-                artist_url = artist_info['url'].iloc[0] if not artist_row.empty else None
+                artist_url = artist_info['url'].iloc[0] if not artist_info.empty else None
                 if artist_url:
                     st.markdown(f"[Click here to see the artist]({artist_url})")
                 else:
                     st.write("No artist page available")
+                st.write("---")
         else:
             st.write("Invalid User ID or User not found: Please enter a valid User ID (integer).")
             st.markdown('<span style="color:red">Wait for the next update if you are a new user</span>', unsafe_allow_html=True)
