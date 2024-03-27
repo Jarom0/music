@@ -6,7 +6,7 @@ artists_df = pd.read_csv('artists_gp3.dat', delimiter='\t', names=['id', 'name',
 user_artists_df = pd.read_csv('user_artists_gp3.dat', delimiter='\t', names=['userID', 'artistID', 'weight'])
 
 # Read the CSV file and split the single column into multiple columns
-scraped_data_df = pd.read_csv('scraped_data_df.csv', header=None,delimiter=';', names=['Artist Name', 'Top Track', 'Track Picture URL', 'Track Link', 'Artist Picture URL'])
+scraped_data_df = pd.read_csv('scraped_data_df.csv', header=None, delimiter=';', names=['Artist Name', 'Top Track', 'Track Picture URL', 'Track Link', 'Artist Picture URL'])
 
 # Function to get top artists
 def get_top_artists(user_id):
@@ -43,20 +43,24 @@ def main():
             for i, artist_name in enumerate(top_artists, start=1):
                 st.write(f"{i}. {artist_name}")
                 
-
                 # Display track pictures
-                top_tracks = scraped_data_df[scraped_data_df['Artist Name'] == artist_name]['Top Track'].tolist()
-                for track_name in top_tracks:
-                    track_picture_url = scraped_data_df[(scraped_data_df['Artist Name'] == artist_name) & (scraped_data_df['Top Track'] == track_name)]['Track Picture URL'].iloc[0]
+                top_tracks_info = scraped_data_df[(scraped_data_df['Artist Name'] == artist_name)]
+                for index, row in top_tracks_info.iterrows():
+                    track_name = row['Top Track']
+                    track_picture_url = row['Track Picture URL']
+                    track_link = row['Track Link']
+                    
+                    st.write(f"**{track_name}**")
+                    
+                    # Display track picture
                     if track_picture_url:
-                        try:
-                            st.image(track_picture_url, caption=track_name, width=150)
-                            st.markdown(f'<style>div.stImage > img {{ float: right; }}</style>', unsafe_allow_html=True)
-                        except Exception as e:
-                            st.write(f"Error displaying image for {track_name}: {e}")
+                        st.image(track_picture_url, caption=track_name, width=150)
                     else:
                         st.write(f"No picture available for {track_name}")
-                
+                    
+                    # Display track link and enable audio playback
+                    st.markdown(f"[Play Track]({track_link})")
+                    
                 # Create a hyperlink to the artist's page
                 artist_info = artists_df.loc[artists_df['name'] == artist_name]
                 artist_url = artist_info['url'].iloc[0] if not artist_info.empty else None
