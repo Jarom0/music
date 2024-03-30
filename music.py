@@ -72,9 +72,17 @@ def get_music_recommendations(user_id):
 
     return recommendations[:5]  # Ensure only 5 recommendations are returned
 
+def add_new_user_favorites(unique_id, favorite_artists):
+    # Map artist names to IDs
+    artist_ids = artists_df[artists_df['name'].isin(favorite_artists)]['id']
+    # Create new user rows for user_artists_df
+    new_rows = [{'userID': unique_id, 'artistID': artist_id, 'weight': 1} for artist_id in artist_ids]
+    # Append new user data
+    global user_artists_df
+    user_artists_df = user_artists_df.append(new_rows, ignore_index=True)
 
 def main():
-    # Custom CSS to inject into the Streamlit app for changing background color and hiding default UI elements
+    # Custom CSS to inject into the Streamlit app for changing background color
     background_color = "#FFFFFF"
     text_color = "#000000"
     st.markdown(
@@ -94,52 +102,58 @@ def main():
 
     st.title('**Top Artists and Tracks for User**')
     
-    # New user functionality
-    if 'new_user_id' not in st.session_state:
-        st.session_state.new_user_id = None
-    
-    if st.session_state.new_user_id:
-        st.write(f"Your unique user ID: {st.session_state.new_user_id}")
-    else:
-        new_user = st.checkbox('I am a new user')
-        if new_user:
-            favorite_artists = st.multiselect('Select your three favorite artists:', artists_df['name'].tolist())
-            if len(favorite_artists) == 3:
-                # Generate a unique ID for the new user
-                unique_id = np.random.randint(1000, 10000)
-                st.session_state.new_user_id = unique_id
-                st.write(f"Your unique user ID: {unique_id}")
-                # Apply recommendation logic for the new user based on the chosen artists
-                recommendations = get_music_recommendations(st.session_state.new_user_id)
-                st.subheader("**Recommended Artists and Tracks for New User:**")
-                for rec in recommendations:
-                    artist_name = rec['Artist Name']
-                    track_title = rec['Top Track']
-                    track_link = rec['Track Link']
-                    track_picture_url = rec['Track Picture URL']
-                    
-                    st.write(f"**Artist:** {artist_name}, **Track:** {track_title}")
-                    st.image(track_picture_url, caption=track_title, width=150)
-                    st.markdown(f"[Play Track]({track_link})")
-                    st.write("---")
-            else:
-                st.warning('Please select exactly three artists.')
+    new_user = st.checkbox('I am a new user')
+    if new_user:
+        favorite_artists = st.multiselect('Select your three favorite artists:', artists_df['name'].tolist())
+        if len(favorite_artists) == 3 and st.button("Get Recommendations"):
+            unique_id = np.random.randint(1000, 10000)
+            # Save new user's favorite artists
+            add_new_user_favorites(unique_id, favorite_artists)
+            st.write(f"Your unique user ID: {unique_id}")
+            recommendations = get_music_recommendations(unique_id)
+            for rec in recommendations:
+                st.write(f"**Artist:** {rec['Artist Name']}, **Track:** {rec['Top Track']}")
+                st.image(rec['Track Picture URL'], caption=rec['Top Track'], width=150)
+                st.markdown(f"[Play Track]({rec['Track Link']})")
+        else:
+            st.warning('Please select exactly three artists.')
 
-    # Existing user functionality
-    user_id = st.text_input('Or enter your User ID:', '')
-    if user_id:
-        user_id = int(user_id)
+    user_id_input = st.text_input('Or enter your User ID:', '')
+    if user_id_input:
+        user_id = int(user_id_input)
         top_artists = get_top_artists(user_id)
+        recommendations = get_music_recommendations(user_id)
         
-        left, right = st.columns(2)
+        # Display the top artists for the existing user
+        st.subheader("**Your Top Artists:**")
+        if top_artists:
+            for artist_name in top_artists:
+                top_track_info = scraped_data_df[scraped_data_df['Artist Name'].str.lower() == artist_name.lower()].head(1)
+                for _, track in top_track_info.iterrows():
+                    image_url = track['Track Picture URL'] if track['Track Picture URL'] and track['Track Picture URL'] != "Not Found" else placeholder_image_url
+                    st.write(f"**Artist:** {artist_name}, **Top Track:** {track['Top Track']}")
+                    st.image(image_url, caption=track['Top Track'], width=150)
+                    st.markdown(f"[Play Track]({track['Track Link']})")
+                    st.write("---")
+        else:
+            st.write("No top artists found for this user ID.")
         
-        with left:
-            # Display for top artists
-            pass  # Your existing logic to display the user's top artists
-
-        with right:
-            # Display for recommendations
-            pass  # Your existing logic to display recommendations
+        # Fetch and display recommendations for the existing user
+        recommendations = get_music_recommendations(user_id)
+        st.subheader("**Recommended Artists and Tracks:**")
+        if recommendations:
+            for rec in recommendations:
+                artist_name = rec['Artist Name']
+                track_title = rec['Top Track']
+                track_link = rec['Track Link']
+                track_picture_url = rec['Track Picture URL']
+                
+                st.write(f"**Artist:** {artist_name}, **Track:** {track_title}")
+                st.image(track_picture_url, caption=track_title, width=150)
+                st.markdown(f"[Play Track]({track_link})")
+                st.write("---")
+        else:
+            st.write("No recommendations available for this user ID.")
 
 if __name__ == "__main__":
     main()
