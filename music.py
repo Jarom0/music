@@ -13,6 +13,7 @@ scraped_data_df = pd.read_csv('scraped_data_df.csv', delimiter=';', names=['Arti
 # Placeholder image URL for missing or invalid track pictures
 placeholder_image_url = 'https://via.placeholder.com/150'
 
+# Function to get top artists based on user ID
 def get_top_artists(user_id):
     try:
         user_data = user_artists_df[user_artists_df['userID'] == user_id]
@@ -25,6 +26,7 @@ def get_top_artists(user_id):
         st.error(f"Error: {e}")
         return []
 
+# Function to get music recommendations for a user
 def get_music_recommendations(user_id):
     top_artists = get_top_artists(user_id)[:5]
     top_artist_ids = artists_df[artists_df['name'].isin(top_artists)]['id'].tolist()
@@ -72,6 +74,7 @@ def get_music_recommendations(user_id):
 
     return recommendations[:5]  # Ensure only 5 recommendations are returned
 
+# Function to add a new user's favorite artists to the DataFrame
 def add_new_user_favorites(unique_id, favorite_artists):
     # Map artist names to IDs
     artist_ids = artists_df[artists_df['name'].isin(favorite_artists)]['id']
