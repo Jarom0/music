@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 # Set the page configuration to use a wide layout
-st.set_page_config(layout="wide")
+st.set_page_config(page_title="Recommending Songs For You", layout="wide")
 
 # Load data
 artists_df = pd.read_csv('artists_gp3.dat', delimiter='\t', names=['id', 'name', 'url', 'pictureURL'], skiprows=1)
@@ -74,19 +74,24 @@ def get_music_recommendations(user_id):
 
 def main():
     # Custom CSS to inject into the Streamlit app for changing background color
-    background_color = "#ADD8E6"  # Light blue; replace with your desired color hex code
+    background_color = "#FFFFFF"
+    text_color = "#000000"
     st.markdown(
         f"""
         <style>
         .stApp {{
             background: {background_color};
+            color: {text_color};
+        }}
+        #MainMenu, footer {{
+            visibility: hidden;
         }}
         </style>
         """,
         unsafe_allow_html=True
     )
-    
-    st.title('Top Artists and Tracks for User')
+
+    st.title('**Top Artists and Tracks for User**')
     user_id = st.text_input('Enter User ID:', '')
 
     if st.button('Submit') and user_id:
@@ -96,7 +101,7 @@ def main():
         left, right = st.columns(2)
         
         with left:
-            st.subheader("Your Top Artists:")
+            st.subheader("**Your Top Artists:**")
             if top_artists:
                 for artist_name in top_artists:
                     top_track_info = scraped_data_df[scraped_data_df['Artist Name'].str.lower() == artist_name.lower()].head(1)
@@ -110,7 +115,7 @@ def main():
                 st.write("No top artists found.")
                 
         with right:
-            st.subheader("Recommended Artists and Tracks:")
+            st.subheader("**Recommended Artists and Tracks:**")
             recommendations = get_music_recommendations(user_id)
             if recommendations:
                 for rec in recommendations:
