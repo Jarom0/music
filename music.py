@@ -1,77 +1,130 @@
 import streamlit as st
 import pandas as pd
 
+# Set the page configuration to use a wide layout
+st.set_page_config(layout="wide")
+
 # Load data
-artists_df = pd.read_csv('artists_gp3.dat', delimiter='\t', names=['id', 'name', 'url', 'pictureURL'])
-user_artists_df = pd.read_csv('user_artists_gp3.dat', delimiter='\t', names=['userID', 'artistID', 'weight'])
+artists_df = pd.read_csv('artists_gp3.dat', delimiter='\t', names=['id', 'name', 'url', 'pictureURL'], skiprows=1)
+user_artists_df = pd.read_csv('user_artists_gp3.dat', delimiter='\t', names=['userID', 'artistID', 'weight'], skiprows=1)
+scraped_data_df = pd.read_csv('scraped_data.csv', delimiter=';', names=['Artist Name', 'Top Track', 'Track Picture URL', 'Track Link', 'Artist Picture URL'], header=None)
 
-# Read the CSV file and split the single column into multiple columns
-scraped_data_df = pd.read_csv('scraped_data_df.csv', header=None, delimiter=';', names=['Artist Name', 'Top Track', 'Track Picture URL', 'Track Link', 'Artist Picture URL'])
+# Placeholder image URL for missing or invalid track pictures
+placeholder_image_url = 'https://via.placeholder.com/150'
 
-# Function to get top artists
 def get_top_artists(user_id):
     try:
-        # Filter user data for the given user ID
         user_data = user_artists_df[user_artists_df['userID'] == user_id]
-        
-        # Aggregate artist interactions by summing the weights
         artist_interactions = user_data.groupby('artistID')['weight'].sum()
-        
-        # Sort artist interactions by total weight in descending order
         artist_interactions_sorted = artist_interactions.sort_values(ascending=False)
-        
-        # Get top artist IDs
         top_artist_ids = artist_interactions_sorted.head(5).index.tolist()
-        
-        # Get top artist names
         top_artists = artists_df[artists_df['id'].isin(top_artist_ids)]['name'].tolist()
-        
         return top_artists
     except Exception as e:
-        print("Error:", e)
-        return None
+        st.error(f"Error: {e}")
+        return []
 
-# Streamlit app
-def main():
-    st.title('Top Artists and Tracks for User')
-    user_id = st.text_input('Enter User ID:')
-    
-    if st.button('Submit'):
-        top_artists = get_top_artists(user_id)
-        if top_artists:
-            st.write(f"Top artists for User ID {user_id}:")
-            for i, artist_name in enumerate(top_artists, start=1):
-                st.write(f"{i}. {artist_name}")
-                
-                # Display track pictures
-                top_tracks_info = scraped_data_df[(scraped_data_df['Artist Name'] == artist_name)]
-                for index, row in top_tracks_info.iterrows():
-                    track_name = row['Top Track']
-                    track_picture_url = row['Track Picture URL']
-                    track_link = row['Track Link']
-                    
-                    st.write(f"**{track_name}**")
-                    
-                    # Display track picture
-                    if track_picture_url:
-                        st.image(track_picture_url, caption=track_name, width=150)
-                    else:
-                        st.write(f"No picture available for {track_name}")
-                    
-                    # Display track link and enable audio playback
-                    st.markdown(f"[Play Track]({track_link})")
-                    
-                # Create a hyperlink to the artist's page
-                artist_info = artists_df.loc[artists_df['name'] == artist_name]
-                artist_url = artist_info['url'].iloc[0] if not artist_info.empty else None
-                if artist_url:
-                    st.markdown(f"[Click here to see the artist]({artist_url})")
-                else:
-                    st.write("No artist page available")
-                st.write("---")
+def get_music_recommendations(user_id):
+    top_artists = get_top_artists(user_id)[:5]
+    top_artist_ids = artists_df[artists_df['name'].isin(top_artists)]['id'].tolist()
+
+    similar_users = user_artists_df[(user_artists_df['artistID'].isin(top_artist_ids)) & (user_artists_df['userID'] != user_id)]
+    similar_users = similar_users.groupby('userID').filter(lambda x: len(x) <= 3)
+
+    initial_recommendations = user_artists_df[
+        user_artists_df['userID'].isin(similar_users['userID']) & 
+        (~user_artists_df['artistID'].isin(top_artist_ids))
+    ].groupby('artistID')['weight'].sum().sort_values(ascending=False)
+
+    recommended_artist_ids = initial_recommendations.index.tolist()
+
+    # Supplement recommendations if fewer than 5 are found
+    if len(recommended_artist_ids) < 5:
+        all_artist_ids = user_artists_df.groupby('artistID')['weight'].sum().sort_values(ascending=False).index.tolist()
+        # Exclude already chosen or user's top artists
+        supplemental_artist_ids = [id for id in all_artist_ids if id not in recommended_artist_ids and id not in top_artist_ids][:5 - len(recommended_artist_ids)]
+        recommended_artist_ids.extend(supplemental_artist_ids)
+
+    recommendations = []
+    for artist_id in recommended_artist_ids[:5]:  # Ensure up to 5 recommendations
+        artist_info = artists_df[artists_df['id'] == artist_id]
+        artist_name = artist_info['name'].iloc[0] if not artist_info.empty else "Unknown Artist"
+        track_info = scraped_data_df[scraped_data_df['Artist Name'].str.lower() == artist_name.lower()].head(1)
+        
+        if not track_info.empty:
+            track = track_info.iloc[0]
+            image_url = track['Track Picture URL'] if track['Track Picture URL'] and track['Track Picture URL'] != "Not Found" else placeholder_image_url
+            recommendations.append({
+                'Artist Name': artist_name,
+                'Top Track': track['Top Track'],
+                'Track Link': track['Track Link'],
+                'Track Picture URL': image_url
+            })
         else:
-            st.write("Invalid User ID or User not found: Please enter a valid User ID (integer).")
-            st.markdown('<span style="color:red">Wait for the next update if you are a new user</span>', unsafe_allow_html=True)
+            # Fallback if no specific track info is available
+            recommendations.append({
+                'Artist Name': artist_name,
+                'Top Track': "Track information not available",
+                'Track Link': "",
+                'Track Picture URL': placeholder_image_url
+            })
+
+    return recommendations[:5]  # Ensure only 5 recommendations are returned
+
+
+def main():
+    # Custom CSS to inject into the Streamlit app for changing background color
+    background_color = "#ADD8E6"  # Light blue; replace with your desired color hex code
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background: {background_color};
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    st.title('Top Artists and Tracks for User')
+    user_id = st.text_input('Enter User ID:', '')
+
+    if st.button('Submit') and user_id:
+        user_id = int(user_id)
+        top_artists = get_top_artists(user_id)
+        
+        left, right = st.columns(2)
+        
+        with left:
+            st.subheader("Your Top Artists:")
+            if top_artists:
+                for artist_name in top_artists:
+                    top_track_info = scraped_data_df[scraped_data_df['Artist Name'].str.lower() == artist_name.lower()].head(1)
+                    for _, track in top_track_info.iterrows():
+                        image_url = track['Track Picture URL'] if track['Track Picture URL'] and track['Track Picture URL'] != "Not Found" else placeholder_image_url
+                        st.write(f"**Artist:** {artist_name}, **Top Track:** {track['Top Track']}")
+                        st.image(image_url, caption=track['Top Track'], width=150)
+                        st.markdown(f"[Play Track]({track['Track Link']})")
+                        st.write("---")
+            else:
+                st.write("No top artists found.")
+                
+        with right:
+            st.subheader("Recommended Artists and Tracks:")
+            recommendations = get_music_recommendations(user_id)
+            if recommendations:
+                for rec in recommendations:
+                    artist_name = rec['Artist Name']
+                    track_title = rec['Top Track']
+                    track_link = rec['Track Link']
+                    track_picture_url = rec['Track Picture URL']
+                    
+                    st.write(f"**Artist:** {artist_name}, **Track:** {track_title}")
+                    st.image(track_picture_url, caption=track_title, width=150)
+                    st.markdown(f"[Play Track]({track_link})")
+                    st.write("---")
+            else:
+                st.write("No recommendations available.")
 
 if __name__ == "__main__":
     main()
