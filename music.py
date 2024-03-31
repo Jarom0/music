@@ -72,11 +72,24 @@ def get_music_recommendations(user_id):
 
     return recommendations[:5]  # Ensure only 5 recommendations are returned
 
-def add_new_user_favorites(unique_id, favorite_artists):
+def add_new_user_favorites(unique_id,favorite_artists):
+    global user_artists_df, artists_df
+    
+    unique_id = np.random.randint(1000, 10000)
+    while unique_id in user_artists_df['userID'].unique():
+        unique_id = np.random.randint(1000, 10000)
+    
     artist_ids = artists_df[artists_df['name'].isin(favorite_artists)]['id'].tolist()
     new_rows = pd.DataFrame([{'userID': unique_id, 'artistID': artist_id, 'weight': 1} for artist_id in artist_ids])
-    global user_artists_df
     user_artists_df = pd.concat([user_artists_df, new_rows], ignore_index=True)
+    
+    return unique_id
+
+#def add_new_user_favorites(unique_id, favorite_artists):
+#    artist_ids = artists_df[artists_df['name'].isin(favorite_artists)]['id'].tolist()
+ #   new_rows = pd.DataFrame([{'userID': unique_id, 'artistID': artist_id, 'weight': 1} for artist_id in artist_ids])
+  #  global user_artists_df
+   # user_artists_df = pd.concat([user_artists_df, new_rows], ignore_index=True)
 
 def display_artists_and_tracks(section_title, artists_tracks):
     st.subheader(section_title)
