@@ -72,18 +72,36 @@ def get_music_recommendations(user_id):
 
     return recommendations[:5]  # Ensure only 5 recommendations are returned
 
-def add_new_user_favorites(unique_id,favorite_artists):
+def add_new_user_favorites(favorite_artists):
     global user_artists_df, artists_df
-    
+
+    # Generate a unique user ID
     unique_id = np.random.randint(1000, 10000)
     while unique_id in user_artists_df['userID'].unique():
         unique_id = np.random.randint(1000, 10000)
-    
+
+    # Map favorite artist names to their IDs
     artist_ids = artists_df[artists_df['name'].isin(favorite_artists)]['id'].tolist()
-    new_rows = pd.DataFrame([{'userID': unique_id, 'artistID': artist_id, 'weight': 1} for artist_id in artist_ids])
+
+    # Create new rows for the new user and their favorite artists
+    new_rows = pd.DataFrame({'userID': [unique_id] * len(artist_ids), 'artistID': artist_ids, 'weight': [100] * len(artist_ids)})
+
+    # Update the DataFrame with the new user's data
     user_artists_df = pd.concat([user_artists_df, new_rows], ignore_index=True)
-    
+
+    # Optionally, save the updated DataFrame to a CSV file
+    user_artists_df.to_csv('user_artists_gp3.dat', index=False, sep='\t', header=False)
+
+    # Save the unique user ID to test.dat
+    save_user_id(unique_id)
+
     return unique_id
+
+def save_user_id(unique_id):
+    # Open test.dat in append mode and write the new user_id
+    with open('test.dat', 'a') as file:
+        file.write(str(unique_id) + '\n')
+
 
 def display_artists_and_tracks(section_title, artists_tracks):
     st.subheader(section_title)
@@ -127,7 +145,7 @@ def main():
     st.title('**Top Artists and Tracks for User**')
 
     # New user functionality
-    new_user = st.checkbox('I am a new user')
+    new_user = st.checkbox('Sign Up ')
 
     if new_user:
         recommendations = []  # Initialize recommendations with a default value
@@ -135,9 +153,9 @@ def main():
         if len(favorite_artists) > 3:
             st.warning('Please select no more than three artists.')
         elif len(favorite_artists) == 3:
-            unique_id = np.random.randint(1000, 10000)
-            add_new_user_favorites(unique_id, favorite_artists)
-            st.write(f"Your unique user ID: {unique_id}")
+            # This line is changed to capture the returned unique_id from the function
+            unique_id = add_new_user_favorites(favorite_artists)  
+            st.write(f"Your unique user ID: {unique_id}")  # This will now display the correct ID
             recommendations = get_music_recommendations(unique_id)
         
         # Apply the two-column layout for displaying recommendations
