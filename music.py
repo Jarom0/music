@@ -2,19 +2,22 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-# Set the page configuration to use a wide layout
+# Configure the Streamlit app layout and title
 st.set_page_config(page_title="Recommending Songs For You", layout="wide")
 
-# Load data
+# Load artist data, user-artist interaction data, and scraped track data from CSV files
 artists_df = pd.read_csv('artists_gp3.dat', delimiter='\t', names=['id', 'name', 'url', 'pictureURL'], skiprows=1)
 user_artists_df = pd.read_csv('user_artists_gp3.dat', delimiter='\t', names=['userID', 'artistID', 'weight'], skiprows=1)
 scraped_data_df = pd.read_csv('scraped_data_df.csv', delimiter=';', names=['Artist Name', 'Top Track', 'Track Picture URL', 'Track Link', 'Artist Picture URL'], header=None)
 
-# Placeholder image URL for missing or invalid track pictures
+# Define a placeholder image URL for any missing or invalid track pictures
 placeholder_image_url = 'https://via.placeholder.com/150'
 
+
+# Function to get top artists for a given user ID
 def get_top_artists(user_id):
     try:
+        # Filter user_artist data for the given user ID and sum weights by artist ID
         user_data = user_artists_df[user_artists_df['userID'] == user_id]
         artist_interactions = user_data.groupby('artistID')['weight'].sum()
         artist_interactions_sorted = artist_interactions.sort_values(ascending=False)
@@ -22,16 +25,20 @@ def get_top_artists(user_id):
         top_artists = artists_df[artists_df['id'].isin(top_artist_ids)]['name'].tolist()
         return top_artists
     except Exception as e:
+        # Display any errors encountered during the process
         st.error(f"Error: {e}")
         return []
 
+# Function to generate music recommendations for a given user ID
 def get_music_recommendations(user_id):
     top_artists = get_top_artists(user_id)[:5]
     top_artist_ids = artists_df[artists_df['name'].isin(top_artists)]['id'].tolist()
 
+    # Identify similar users based on overlapping artist interests
     similar_users = user_artists_df[(user_artists_df['artistID'].isin(top_artist_ids)) & (user_artists_df['userID'] != user_id)]
     similar_users = similar_users.groupby('userID').filter(lambda x: len(x) <= 3)
 
+    # Generate initial recommendations based on similar users' interests
     initial_recommendations = user_artists_df[
         user_artists_df['userID'].isin(similar_users['userID']) & 
         (~user_artists_df['artistID'].isin(top_artist_ids))
@@ -46,6 +53,7 @@ def get_music_recommendations(user_id):
         supplemental_artist_ids = [id for id in all_artist_ids if id not in recommended_artist_ids and id not in top_artist_ids][:5 - len(recommended_artist_ids)]
         recommended_artist_ids.extend(supplemental_artist_ids)
 
+    # Compile recommendation details including track information
     recommendations = []
     for artist_id in recommended_artist_ids[:5]:  # Ensure up to 5 recommendations
         artist_info = artists_df[artists_df['id'] == artist_id]
@@ -72,18 +80,19 @@ def get_music_recommendations(user_id):
 
     return recommendations[:5]  # Ensure only 5 recommendations are returned
 
+# Function to add new user favorites to the user_artists_df
 def add_new_user_favorites(favorite_artists):
     global user_artists_df, artists_df
 
-    # Generate a unique user ID
+    # Generate a unique user ID that doesn't already exist in the DataFrame
     unique_id = np.random.randint(1000, 10000)
     while unique_id in user_artists_df['userID'].unique():
         unique_id = np.random.randint(1000, 10000)
 
-    # Map favorite artist names to their IDs
+    # Convert favorite artist names to their corresponding IDs
     artist_ids = artists_df[artists_df['name'].isin(favorite_artists)]['id'].tolist()
 
-    # Create new rows for the new user and their favorite artists
+    # Create new rows for the DataFrame representing the new user's favorite artists
     new_rows = pd.DataFrame({'userID': [unique_id] * len(artist_ids), 'artistID': artist_ids, 'weight': [100] * len(artist_ids)})
 
     # Update the DataFrame with the new user's data
@@ -102,7 +111,7 @@ def save_user_id(unique_id):
     with open('test.dat', 'a') as file:
         file.write(str(unique_id) + '\n')
 
-
+# Function to display artists and tracks in a structured format
 def display_artists_and_tracks(section_title, artists_tracks):
     st.subheader(section_title)
     if artists_tracks:
@@ -112,6 +121,7 @@ def display_artists_and_tracks(section_title, artists_tracks):
             track_link = artist_track['Track Link']
             track_picture_url = artist_track['Track Picture URL']
             
+             # Use columns to layout the track image and details side by side
             col1, col2 = st.columns([1, 3])
             with col1:
                 st.image(track_picture_url, caption=track_title, width=150)
@@ -123,8 +133,9 @@ def display_artists_and_tracks(section_title, artists_tracks):
     else:
         st.write("No information available.")
 
+# Main function to orchestrate the app workflow
 def main():
-    # Custom CSS to inject into the Streamlit app for changing background color
+    # Set up custom CSS for the app
     background_color = "#FFFFFF"
     text_color = "#000000"
     st.markdown(
@@ -144,9 +155,8 @@ def main():
 
     st.title('**Top Artists and Tracks for User**')
 
-    # New user functionality
+    # Handle new user sign-up
     new_user = st.checkbox('Sign Up ')
-
     if new_user:
         recommendations = []  # Initialize recommendations with a default value
         favorite_artists = st.multiselect('Select your three favorite artists:', artists_df['name'].tolist())
@@ -194,8 +204,8 @@ def main():
             else:
                 st.write("No recommendations available.")
 
+    # Handle existing user ID submission for recommendations
     user_id = st.text_input('Enter User ID:', '')
-
     if st.button('Submit') and user_id:
         user_id = int(user_id)
         top_artists = get_top_artists(user_id)
@@ -233,6 +243,7 @@ def main():
             else:
                 st.write("No recommendations available.")
 
+# Entry point of the Streamlit app
 if __name__ == "__main__":
     main()
  
